@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  jobs         Job[]
+}
+
+enum JobStatus {
+  WAITING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRYING
+  DEAD_LETTER
+  CANCELLED
+}
+
+enum JobType {
+  EMAIL
+  IMAGE_RESIZE
+  DUMMY
+}
+
+model Job {
+  id             String     @id @default(uuid())
+  type           JobType
+  status         JobStatus  @default(WAITING)
+  priority       Int        @default(0)
+  payload        Json
+  retries        Int        @default(0)
+  maxRetries     Int        @default(3)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  scheduledAt    DateTime?
+  completedAt    DateTime?
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  resultUrl      String?
+  lastError      String?
+  idempotencyKey String?    
+  logs           JobLog[]
+
+  @@unique([userId, idempotencyKey])
+}
+
+model JobLog {
+  id        String   @id @default(uuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id])
+  workerId  String?
+  event     String
+  duration  Int?
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+model Worker {
+  id            String   @id @default(uuid())
+  status        String   @default("IDLE")
+  lastHeartbeat DateTime @default(now())
+  activeJobs    Int      @default(0)
+}
+
