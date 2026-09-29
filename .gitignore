@@ -29,3 +29,11 @@ Thumbs.db
 # Cache
 .turbo/
 .cache/
+
+
+# AI/editor generated files
+**/.agents/
+**/.claude/
+**/.windsurf/
+**/AGENTS.md
+**/CLAUDE.md
