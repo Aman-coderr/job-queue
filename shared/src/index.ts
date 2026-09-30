@@ -1,3 +1,5 @@
+export { publishJobUpdate } from "./publishevent";
+
 export * from "./queueKeys";
 export * from "./queue";
 export { default as redisClient } from "./redisClient";

@@ -6,6 +6,7 @@ import { emailSender } from "./executors/emailExecutor";
 import { dummyExecutor } from "./executors/dummyExecutor";
 import { imageResizeExecutor } from "./executors/imageResizeExecutor";
 import { registerWorker, startHeartbeatLoop } from "./heartbeat";
+import { publishJobUpdate } from "shared";
 
 const workerId = process.env.WORKER_ID || "worker-unknown";
 
@@ -58,7 +59,12 @@ export default async function worker() {
         data: { jobId: job.id, workerId, event: "PROCESSING" },
       });
 
+      await publishJobUpdate(jobId, job.userId, "PROCESSING").catch((e: unknown) =>
+        console.error(`[${workerId}] Failed to publish PROCESSING update for job ${jobId}:`, e)
+      );
+
       console.log(`[${workerId}] Processing job ${jobId} (type: ${job.type})`);
+
 
       const payload = job.payload as any;
 
@@ -87,6 +93,11 @@ export default async function worker() {
         console.error(`[${workerId}] Failed to mark job ${jobId} COMPLETED:`, e);
         throw e;
       });
+
+      await publishJobUpdate(jobId, job.userId, "COMPLETED").catch((e: unknown) =>
+        console.error(`[${workerId}] Failed to publish COMPLETED update for job ${jobId}:`, e)
+      );
+
 
       await prisma.jobLog.create({
         data: {
@@ -161,6 +172,10 @@ export default async function worker() {
       }).catch((updateErr: unknown) =>
         console.error(`[${workerId}] Failed to mark job ${jobId} as FAILED:`, updateErr));
 
+      await publishJobUpdate(jobId, job.userId, "FAILED").catch((e: unknown) =>
+        console.error(`[${workerId}] Failed to publish FAILED update for job ${jobId}:`, e)
+      );
+
       await prisma.jobLog.create({
         data: { jobId, workerId, event: "FAILED", duration, error: error.message || String(error) },
       }).catch((logErr: unknown) =>
@@ -177,6 +192,10 @@ export default async function worker() {
           where: { id: jobId },
           data: { status: "RETRYING", retries: nextRetryCount },
         }).catch((e: unknown) => console.error(`[${workerId}] Failed to mark ${jobId} RETRYING:`, e));
+
+        await publishJobUpdate(jobId, job.userId, "RETRYING").catch((e: unknown) =>
+          console.error(`[${workerId}] Failed to publish RETRYING update for job ${jobId}:`, e)
+        );
 
         await prisma.jobLog.create({
           data: { jobId, workerId, event: "RETRYING", duration, error: error.message },
@@ -204,6 +223,10 @@ export default async function worker() {
           },
         }).catch((updateErr: unknown) =>
           console.error(`[${workerId}] Failed to mark job ${jobId} as DEAD_LETTER:`, updateErr));
+
+        await publishJobUpdate(jobId, job.userId, "DEAD LETTER").catch((e: unknown) =>
+          console.error(`[${workerId}] Failed to publish DEAD LETTER update for job ${jobId}:`, e)
+        );
 
         await prisma.jobLog.create({
           data: { jobId, workerId, event: "DEAD_LETTER", duration, error: error.message || String(error) },

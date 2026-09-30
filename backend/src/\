@@ -5,9 +5,7 @@ import express from 'express'
 import cors from 'cors'
 
 import authRoutes from './routes/authroutes';
-import jobRoutes from './routes/job';
-import { initSocketServer } from "./socket";
-import { startJobUpdateSubscriber } from "./jobUpdateSubscriber";
+import jobRoutes from './routes/job'
 
 const app = express();
 const httpServer = createServer(app);
@@ -17,9 +15,9 @@ app.use(cors());
 app.use("/auth", authRoutes);
 app.use("/jobs", jobRoutes);
 
-
-initSocketServer(httpServer);
-startJobUpdateSubscriber();
+const io = new Server(httpServer, {
+  cors: { origin: "*" },
+});
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => console.log(`Server is running on ${PORT}`));
+httpServer.listen(PORT);
