@@ -1,52 +1,49 @@
 "use client";
 
-import React, { useState } from 'react';
-import { X, Upload, Mail, Image as ImageIcon, Sliders, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Image as ImageIcon, Sliders, Zap, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { JobType, Priority } from '@/types';
-import { createJob, uploadJobFile } from '@/services/api';
+import { createJob, uploadJobFile } from '@/lib/api';
 
 interface JobSubmitModalProps {
   isOpen: boolean;
   onClose: () => void;
   onJobCreated: () => void;
-  isDemo: boolean;
-  onMockJobAdd?: (jobType: JobType, priority: Priority, payload: Record<string, unknown>, idempotencyKey?: string) => void;
 }
 
 export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
   isOpen,
   onClose,
   onJobCreated,
-  isDemo,
-  onMockJobAdd,
 }) => {
   const [jobType, setJobType] = useState<JobType>('EMAIL');
   const [priority, setPriority] = useState<Priority>('NORMAL');
-  const [idempotencyKey, setIdempotencyKey] = useState('');
-  
-  // Email fields
-  const [emailTo, setEmailTo] = useState('user@example.com');
-  const [emailSubject, setEmailSubject] = useState('Notification Alert');
-  const [emailBody, setEmailBody] = useState('Your scheduled report is ready.');
+  const [idempotencyKey, setIdempotencyKey] = useState<string>('');
 
-  // Image Resize fields
+  const [emailTo, setEmailTo] = useState('user@example.com');
+  const [emailSubject, setEmailSubject] = useState('System Notification');
+  const [emailBody, setEmailBody] = useState('Your scheduled processing is complete.');
+
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageFallbackUrl, setImageFallbackUrl] = useState('');
   const [resizeWidth, setResizeWidth] = useState(400);
   const [resizeHeight, setResizeHeight] = useState(400);
 
-  // Dummy fields
   const [dummyDuration, setDummyDuration] = useState(3);
-  const [dummyFailRate, setDummyFailRate] = useState(0.3);
+  const [dummyFailRate, setDummyFailRate] = useState(0.2);
 
   const [loading, setLoading] = useState(false);
+  const [uploadingStep, setUploadingStep] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  if (!isOpen) return null;
+  // Generate idempotency key ONCE when form is first shown (Step 4)
+  useEffect(() => {
+    if (isOpen && !idempotencyKey) {
+      setIdempotencyKey(`idem-${Math.random().toString(36).substring(2, 10)}-${Date.now().toString(36)}`);
+    }
+  }, [isOpen, idempotencyKey]);
 
-  const handleGenerateKey = () => {
-    setIdempotencyKey(`idem-${Math.random().toString(36).substring(2, 9)}`);
-  };
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,38 +59,45 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
         }
         payload = { to: emailTo.trim(), subject: emailSubject.trim(), body: emailBody.trim() };
       } else if (jobType === 'IMAGE_RESIZE') {
-        let finalFileUrl = imageUrl.trim();
-        if (imageFile && !isDemo) {
+        let finalFileUrl = imageFallbackUrl.trim();
+        // Sequential 2-step flow: upload file first, then create job (Step 4)
+        if (imageFile) {
+          setUploadingStep(true);
           finalFileUrl = await uploadJobFile(imageFile);
+          setUploadingStep(false);
         } else if (!finalFileUrl) {
-          finalFileUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
+          throw new Error('Please select an image file to upload or enter a direct image URL');
         }
         payload = { fileUrl: finalFileUrl, width: Number(resizeWidth), height: Number(resizeHeight) };
       } else if (jobType === 'DUMMY') {
         payload = { duration: Number(dummyDuration), failRate: Number(dummyFailRate) };
       }
 
-      if (isDemo && onMockJobAdd) {
-        onMockJobAdd(jobType, priority, payload, idempotencyKey || undefined);
-        setStatusMessage({ type: 'success', text: 'Job enqueued to sandbox queue' });
-      } else {
-        const res = await createJob(jobType, priority, payload, idempotencyKey || undefined);
-        setStatusMessage({
-          type: 'success',
-          text: res.duplicate ? `Idempotent duplicate caught (Job ID: ${res.jobId})` : `Job enqueued (${res.jobId})`,
-        });
-      }
+      const res = await createJob(jobType, priority, payload, idempotencyKey || undefined);
+      
+      setStatusMessage({
+        type: 'success',
+        text: res.duplicate
+          ? `Duplicate recognized via idempotency key (Job ID: ${res.jobId})`
+          : `Job queued successfully (${res.jobId})`,
+      });
 
+      // Step 4 requirement: only generate a NEW idempotency key AFTER a successful submission
+      setIdempotencyKey(`idem-${Math.random().toString(36).substring(2, 10)}-${Date.now().toString(36)}`);
+
+      // Immediately refresh job list (Step 7)
       onJobCreated();
+
       setTimeout(() => {
         onClose();
         setStatusMessage(null);
       }, 1000);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit job';
+      const msg = err instanceof Error ? err.message : 'Job submission failed';
       setStatusMessage({ type: 'error', text: msg });
     } finally {
       setLoading(false);
+      setUploadingStep(false);
     }
   };
 
@@ -107,14 +111,9 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
           failRate: i % 2 === 0 ? 0 : 0.6,
         };
         const burstPriority: Priority = i % 3 === 0 ? 'HIGH' : 'NORMAL';
-
-        if (isDemo && onMockJobAdd) {
-          onMockJobAdd('DUMMY', burstPriority, burstPayload);
-        } else {
-          await createJob('DUMMY', burstPriority, burstPayload);
-        }
+        await createJob('DUMMY', burstPriority, burstPayload);
       }
-      setStatusMessage({ type: 'success', text: `Enqueued burst of ${count} jobs!` });
+      setStatusMessage({ type: 'success', text: `Enqueued burst of ${count} test jobs!` });
       onJobCreated();
       setTimeout(() => {
         onClose();
@@ -129,7 +128,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
           <div className="flex items-center gap-2">
@@ -215,7 +214,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
                     priority === 'NORMAL' ? 'bg-zinc-800 text-zinc-100 shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  NORMAL (0)
+                  NORMAL
                 </button>
                 <button
                   type="button"
@@ -224,28 +223,21 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
                     priority === 'HIGH' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  HIGH (1)
+                  HIGH
                 </button>
               </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-medium text-zinc-400">Idempotency Key</label>
-                <button
-                  type="button"
-                  onClick={handleGenerateKey}
-                  className="text-[11px] text-indigo-400 hover:underline font-mono"
-                >
-                  Auto
-                </button>
-              </div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+                Idempotency Key (Active Form Token)
+              </label>
               <input
                 type="text"
+                readOnly
                 value={idempotencyKey}
-                onChange={(e) => setIdempotencyKey(e.target.value)}
-                placeholder="Optional unique key"
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 font-mono text-xs text-zinc-200 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-1.5 font-mono text-[11px] text-zinc-400 cursor-not-allowed"
+                title="Preserved during this submission session to prevent duplicate jobs"
               />
             </div>
           </div>
@@ -270,7 +262,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
                   value={emailSubject}
                   onChange={(e) => setEmailSubject(e.target.value)}
                   required
-                  placeholder="Task Completed Alert"
+                  placeholder="Task Notification"
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
@@ -280,7 +272,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
                   rows={2}
                   value={emailBody}
                   onChange={(e) => setEmailBody(e.target.value)}
-                  placeholder="Details of the job..."
+                  placeholder="Message payload content..."
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
@@ -290,23 +282,24 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
           {jobType === 'IMAGE_RESIZE' && (
             <div className="space-y-3 rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-3.5">
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Upload Image or URL</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">
+                  Upload Image File (Step 1: Storage Upload)
+                </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       setImageFile(e.target.files[0]);
-                      setImageUrl(URL.createObjectURL(e.target.files[0]));
                     }
                   }}
                   className="w-full text-xs text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-200 hover:file:bg-zinc-700"
                 />
                 <input
                   type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Or paste direct image URL (https://...)"
+                  value={imageFallbackUrl}
+                  onChange={(e) => setImageFallbackUrl(e.target.value)}
+                  placeholder="Or provide direct image URL..."
                   className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
@@ -318,7 +311,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
                     value={resizeWidth}
                     onChange={(e) => setResizeWidth(Number(e.target.value))}
                     min={50}
-                    max={3000}
+                    max={4000}
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -329,7 +322,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
                     value={resizeHeight}
                     onChange={(e) => setResizeHeight(Number(e.target.value))}
                     min={50}
-                    max={3000}
+                    max={4000}
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -341,7 +334,7 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
             <div className="space-y-3 rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-3.5">
               <div>
                 <div className="flex justify-between text-xs font-medium text-zinc-400 mb-1">
-                  <span>Work Duration: {dummyDuration}s</span>
+                  <span>Execution Duration: {dummyDuration}s</span>
                   <span className="text-zinc-500 font-mono">1s - 10s</span>
                 </div>
                 <input
@@ -355,9 +348,9 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
               </div>
               <div>
                 <div className="flex justify-between text-xs font-medium text-zinc-400 mb-1">
-                  <span>Simulated Fail Rate: {(dummyFailRate * 100).toFixed(0)}%</span>
+                  <span>Failure Probability: {(dummyFailRate * 100).toFixed(0)}%</span>
                   <span className="text-zinc-500 font-mono">
-                    {dummyFailRate === 0 ? 'Always Succeed' : dummyFailRate === 1 ? 'Always DLQ' : 'Random Retries'}
+                    {dummyFailRate === 0 ? 'Reliable' : dummyFailRate === 1 ? 'Always DLQ' : 'Retries / Backoff'}
                   </span>
                 </div>
                 <input
@@ -394,9 +387,16 @@ export const JobSubmitModal: React.FC<JobSubmitModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 transition disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 transition disabled:opacity-50"
               >
-                {loading ? 'Submitting...' : 'Enqueue Job'}
+                {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span>
+                  {uploadingStep
+                    ? 'Uploading file...'
+                    : loading
+                    ? 'Submitting...'
+                    : 'Enqueue Job'}
+                </span>
               </button>
             </div>
           </div>

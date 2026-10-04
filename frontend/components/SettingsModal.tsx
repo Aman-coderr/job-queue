@@ -12,7 +12,7 @@ import {
   setDemoMode,
   loginUser,
   registerUser,
-} from '@/services/api';
+} from '@/lib/api';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -56,11 +56,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         setAuthToken(res.token, email);
         setAuthSuccess('Signed in successfully! JWT token saved.');
       } else if (authTab === 'signup') {
-        const res = await registerUser(email, password);
-        if (res.token) {
-          setTokenState(res.token);
-          setAuthToken(res.token, email);
-        }
+        await registerUser(email, password);
         setAuthSuccess('Account created! You can now sign in.');
       }
       onConfigChange();
