@@ -49,9 +49,6 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold tracking-tight text-zinc-100">QueueCraft</span>
-                <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-[10px] font-mono font-medium text-zinc-400">
-                  Day 15 & 16
-                </span>
               </div>
               <p className="text-xs text-zinc-400">Distributed Job Queue System</p>
             </div>
@@ -60,33 +57,30 @@ export const Header: React.FC<HeaderProps> = ({
           <nav className="hidden md:flex items-center gap-1 rounded-lg bg-zinc-900/90 p-1 ring-1 border border-zinc-800">
             <Link
               href="/"
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                pathname === '/'
-                  ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${pathname === '/'
+                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+                }`}
             >
               <Layers className="h-3.5 w-3.5" />
               Jobs Stream
             </Link>
             <Link
               href="/metrics"
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                pathname === '/metrics'
-                  ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${pathname === '/metrics'
+                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+                }`}
             >
               <BarChart3 className="h-3.5 w-3.5" />
               Metrics
             </Link>
             <Link
               href="/workers"
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                pathname === '/workers'
-                  ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${pathname === '/workers'
+                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+                }`}
             >
               <Cpu className="h-3.5 w-3.5" />
               Worker Fleet
@@ -97,13 +91,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs">
             <span
-              className={`flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] ${
-                socketStatus === 'connected'
-                  ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20'
-                  : socketStatus === 'connecting'
+              className={`flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] ${socketStatus === 'connected'
+                ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20'
+                : socketStatus === 'connecting'
                   ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20'
                   : 'bg-zinc-800 text-zinc-400'
-              }`}
+                }`}
             >
               {socketStatus === 'connected' ? (
                 <>
@@ -126,11 +119,10 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onToggleQueuePause}
               title={isQueuePaused ? 'Resume Redis consumer loop' : 'Pause Redis consumer loop'}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                isQueuePaused
-                  ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30 hover:bg-amber-500/30'
-                  : 'bg-zinc-900 text-zinc-300 ring-1 ring-zinc-800 hover:bg-zinc-800'
-              }`}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${isQueuePaused
+                ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30 hover:bg-amber-500/30'
+                : 'bg-zinc-900 text-zinc-300 ring-1 ring-zinc-800 hover:bg-zinc-800'
+                }`}
             >
               {isQueuePaused ? (
                 <>
@@ -183,25 +175,22 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex w-full rounded-lg bg-zinc-900 p-1">
           <Link
             href="/"
-            className={`flex-1 py-1.5 text-center text-xs font-medium rounded ${
-              pathname === '/' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'
-            }`}
+            className={`flex-1 py-1.5 text-center text-xs font-medium rounded ${pathname === '/' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'
+              }`}
           >
             Jobs
           </Link>
           <Link
             href="/metrics"
-            className={`flex-1 py-1.5 text-center text-xs font-medium rounded ${
-              pathname === '/metrics' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'
-            }`}
+            className={`flex-1 py-1.5 text-center text-xs font-medium rounded ${pathname === '/metrics' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'
+              }`}
           >
             Metrics
           </Link>
           <Link
             href="/workers"
-            className={`flex-1 py-1.5 text-center text-xs font-medium rounded ${
-              pathname === '/workers' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'
-            }`}
+            className={`flex-1 py-1.5 text-center text-xs font-medium rounded ${pathname === '/workers' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400'
+              }`}
           >
             Workers
           </Link>
