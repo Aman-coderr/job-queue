@@ -10,12 +10,18 @@ export function initSocketServer(httpServer: HTTPServer) {
   });
 
   io.on("connection", (socket) => {
-    const token = socket.handshake.auth.token;
+    const rawToken = socket.handshake.auth.token;
 
-    if (!token) {
+    if (!rawToken) {
       socket.disconnect();
       return;
     }
+
+    const token = typeof rawToken === "string" && rawToken.startsWith("Bearer ")
+      ? rawToken.slice(7).trim()
+      : rawToken;
+
+
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: string };
       socket.join(`user-${decoded.id}`);

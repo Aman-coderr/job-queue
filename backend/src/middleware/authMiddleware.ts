@@ -11,10 +11,20 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
       message: "Server Configuration Error",
     });
   }
-  const token = req.headers.token as string | undefined
-  if (!token) {
+  const authHeader = req.headers.authorization || (req.headers.token as string | undefined);
+  if (!authHeader) {
     return res.status(401).json({
       message: "No token Provided"
+    });
+  }
+
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : authHeader.trim();
+
+  if (!token) {
+    return res.status(401).json({
+      message: "No token Provided",
     });
   }
 
