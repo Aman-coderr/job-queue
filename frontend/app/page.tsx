@@ -159,7 +159,7 @@ export default function JobsDashboardPage() {
               Asynchronous Job Stream
             </h1>
             <p className="text-xs text-zinc-400 mt-1">
-              Submit, inspect, and monitor background tasks with live WebSocket telemetry (Day 15)
+              Submit, inspect, and monitor background tasks with live WebSocket telemetry
             </p>
           </div>
 

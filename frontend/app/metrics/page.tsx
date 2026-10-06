@@ -74,7 +74,7 @@ export default function MetricsPage() {
           await apiSetQueuePause(next);
         }}
         onOpenSubmitModal={() => router.push('/')}
-        onOpenSettingsModal={() => {}}
+        onOpenSettingsModal={() => { }}
         userEmail={userEmail}
         onLogout={logout}
       />
@@ -86,7 +86,7 @@ export default function MetricsPage() {
               Queue Metrics & Analytics
             </h1>
             <p className="text-xs text-zinc-400 mt-1">
-              Aggregated queue throughput, failure rates, and priority partition depth (Day 16)
+              Aggregated queue throughput, failure rates, and priority partition depth
             </p>
           </div>
 
